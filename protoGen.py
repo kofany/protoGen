@@ -3,7 +3,6 @@ import socket
 import re
 import time
 
-
 class ConfigWizard:
     def __init__(self):
         self.config = {}
@@ -38,6 +37,55 @@ class ConfigWizard:
         self.ask_nick()
         self.ask_channel()
         self.ask_bind_ip()
+
+
+def add_owner(owner):
+    with open('owner.txt', 'a') as f:
+        f.write(owner + '\n')
+
+def remove_owner(owner):
+    with open('owner.txt', 'r') as f:
+        lines = f.readlines()
+    with open('owner.txt', 'w') as f:
+        for line in lines:
+            if line.strip() != owner:
+                f.write(line)
+
+def list_owners():
+    with open('owner.txt', 'r') as f:
+        owners = [line.strip() for line in f.readlines()]
+    return owners
+
+def handle_owner_command(command, sender, owners):
+    if command.startswith('.+own '):
+        owner = command.split(' ')[1]
+        if re.match(r'^\*\![^@]+\@[^@]+$', owner) and owner not in list_owners():
+            add_owner(owner)
+            owners.append(r"{}".format(owner.replace('*', '.*')))  # Update the owners list
+            return f"{owner} added to the owner list."
+        else:
+            return f"Invalid owner format or owner already exists."
+    elif command.startswith('.-own '):
+        owner = command.split(' ')[1]
+        if owner in list_owners():
+            remove_owner(owner)
+            owner_pattern = r"{}".format(owner.replace('*', '.*'))
+            if owner_pattern in owners:
+                owners.remove(owner_pattern)  # Update the owners list
+            return f"{owner} removed from the owner list."
+        else:
+            return f"Owner not found in the owner list."
+    elif command == '.own':
+        owners = list_owners()
+        if owners:
+            return f"Current owners: {', '.join(owners)}"
+        else:
+            return "No owners found."
+    else:
+        return "Invalid owner command."        
+
+def is_owner(sender, owners):
+    return any(re.search(owner, sender) for owner in owners)
 
 def extract_nick_from_whois(response):
     for line in response.split('\n'):
@@ -226,6 +274,28 @@ def jump_server(config, irc, channels, new_server_address):
         irc.send(('JOIN ' + channel + '\r\n').encode())
 
     return irc
+def get_address_family(ip):
+    try:
+        socket.inet_pton(socket.AF_INET, ip)
+        return socket.AF_INET
+    except socket.error:
+        try:
+            socket.inet_pton(socket.AF_INET6, ip)
+            return socket.AF_INET6
+        except socket.error:
+            return None
+
+def create_socket(config):
+    if 'bind_ip' in config:
+        address_family = get_address_family(config['bind_ip'])
+        if address_family is not None:
+            irc = socket.socket(address_family, socket.SOCK_STREAM)
+            irc.bind((config['bind_ip'], 0))
+        else:
+            raise ValueError("Invalid IP address in configuration.")
+    else:
+        irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    return irc
 
 def main():
     # Check if required files exist, create them if they don't
@@ -241,21 +311,17 @@ def main():
     fb_data = load_fb()
     channels = set()
 
-    irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    if 'bind_ip' in config:
-        irc.bind((config['bind_ip'], 0))
+    irc = create_socket(config)
     irc.connect((config['server'], int(config['port'])))
     irc.send(('NICK ' + config['nick'] + '\r\n').encode())
     irc.send(('USER ' + config['nick'] + ' 0 * :' + config['nick'] + '\r\n').encode())
     irc.send(('JOIN ' + config['channel'] + '\r\n').encode())
 
 
+
     while True:
         message = irc.recv(2048).decode()
-        if not message.strip():
-            print("Received an empty message.")
-            continue
-        print(f"Received message: {message}")
+        print(message)
 
         if "Closing Link" in message:
             print("Connection closed by server with message:", message)
@@ -279,6 +345,12 @@ def main():
                     nick_to_op = command.split(' ')[1]
                     irc.send(('MODE ' + config['channel'] + ' +o ' + nick_to_op + '\r\n').encode())
 
+                if command.startswith('.+own ') or command.startswith('.-own ') or command == '.own':
+                    response = handle_owner_command(command, sender, owners)
+                    if response:
+                        for line in response.split('\n'):
+                            irc.send(('PRIVMSG ' + sender.split('!')[0] + ' :' + line + '\r\n').encode())
+                                        
                 elif command.startswith('.k '):
                     command_split = command.split(' ', 2)
                     nick_to_kick = command_split[1]
@@ -304,6 +376,7 @@ def main():
                                 if nick == nick_to_kick:
                                     irc.send(('KICK ' + channel + ' ' + nick + ' :' + kick_reason + '\r\n').encode())
                                     break
+                
                 elif command == '.mk':
                     # Get the channel from the message
                     channel = message.split()[2]
@@ -320,20 +393,25 @@ def main():
                     kick_list = []
                     owner_nick = sender.split('!')[0]
 
-                    for line in lines:
-                        if line.startswith(':') and '352' in line:
-                            parts = line.split()
-                            if len(parts) > 7:
-                                nick = parts[7]
-                                ident_host = parts[4] + '@' + parts[5]
-                                if nick != bot_nick:
-                                    if nick != owner_nick:
-                                        kick_list.append(nick)
+                    for i in range(0, len(lines), 4):
+                        nick_block = lines[i:i+4]
+                        kick_block = []
+                        for line in nick_block:
+                            if line.startswith(':') and '352' in line:
+                                parts = line.split()
+                                if len(parts) > 7:
+                                    nick = parts[7]
+                                    ident_host = parts[4] + '@' + parts[5]
+                                    if nick != bot_nick:
+                                        if nick != owner_nick:
+                                            kick_block.append(nick)
+                        if kick_block:
+                            kick_list.append(','.join(kick_block))
 
                     # Kick users one by one
-                    for nick in kick_list:
-                        irc.send(('KICK ' + channel + ' ' + nick + ' :protoGen Mass Kick\r\n').encode())
-                        time.sleep(0.2)  # wait half a second between kicks to avoid flooding the server
+                    for block in kick_list:
+                        irc.send(('KICK ' + channel + ' ' + block + ' :protoGen Mass Kick\r\n').encode())
+
 
 
                 # Add new .kb command

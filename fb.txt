@@ -1,0 +1,2 @@
+#example *!ident@host f
+#example2 *!ident2@host2 d

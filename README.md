@@ -6,7 +6,7 @@ Info na temat plików i ich roli
 
 - **config.txt**: Zawiera informacje o konfiguracji bota, takie jak adres serwera, numer portu, nick bota, kanał i adres IP do powiązania. Bot sprawdza, czy plik istnieje podczas uruchamiania, w przeciwnym razie uruchamia kreatora konfiguracji.
 - **owner.txt**: Przechowuje listę właścicieli bota. Bot sprawdza, czy plik istnieje podczas uruchamiania, w przeciwnym razie tworzy plik i dodaje pierwszego właściciela.
-- **fb.txt**: Przechowuje informacje o listach FB. Bot sprawdza, czy plik istnieje podczas uruchamiania, w przeciwnym razie tworzy pusty plik.
+- **fb.txt**: Przechowuje informacje o listach FB. Bot sprawdza, czy plik istnieje podczas uruchamiania, w przeciwnym razie tworzy pusty plik. Flaga f - autoop, flaga d - kick ban 
 
 ## Zmienne w config.txt
 
@@ -43,7 +43,7 @@ This bot uses the following txt files for its operation:
 
 1. **config.txt**: Contains configuration details like server address, port number, bot nickname, channel to operate on, and IP address to bind (if applicable).
 2. **owner.txt**: Contains a list of bot owners with their hostmasks.
-3. **fb.txt**: Stores information about users and their flags (e.g., f for auto-op, d for auto-ban).
+3. **fb.txt**: Stores information about users and their flags (e.g., f for auto-op, d for auto-ban-kick).
 
 At startup, the bot checks if the necessary files exist. If not, it creates the files and runs a configuration wizard for `config.txt` and prompts the user to enter the bot owner's name for `owner.txt`.
 

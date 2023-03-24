@@ -1,3 +1,45 @@
+"""
+INFO ENG
+Author: Jerzy 'kofany' Dabrowski
+Bot Name: protoGen
+Version: 0.2
+License: GPL 3.0
+
+protoGen is an IRC bot designed to perform various administrative tasks,
+such as managing owners, applying flags to users, and more. It is built
+using Python and is distributed under the GPL 3.0 License. The bot can
+be easily configured through the use of a configuration wizard, which
+helps users set up the bot with the required parameters, such as server
+address, port number, bot nickname, and channel.
+
+Upon startup, protoGen checks for the existence of required files,
+such as config.txt, owner.txt, and fb.txt. If these files do not exist,
+the bot will create them and load their contents. The bot can also
+dynamically update the list of owners and handle owner commands, ensuring
+that the bot is always up-to-date with the latest information.
+
+Please refer to the README.md file for a detailed list of the txt files
+used by the bot, as well as the variables that are passed to the config.txt
+file and their descriptions.
+
+INFO PL
+Autor: Jerzy 'kofany' Dabrowski
+Nazwa bota: protoGen
+Wersja: 0.2
+Licencja: GPL 3.0
+
+protoGen to prosty bot IRC napisany w Pythonie. Głównym celem tego bota jest 
+automatyczne zarządzanie uprawnieniami użytkowników na kanałach IRC. 
+
+Wersja 0.2 zawiera funkcje, takie jak:
+- Automatyczne nadawanie uprawnień op (operatora) wybranym użytkownikom
+- Obsługa poleceń właściciela bota (dodawanie, usuwanie i wyświetlanie właścicieli)
+- Automatyczne tworzenie plików konfiguracyjnych, jeśli nie istnieją
+- Wsparcie dla poleceń związanych z banowaniem użytkowników
+
+Aby uruchomić bota, wystarczy uruchomić skrypt w środowisku Python. Przed pierwszym uruchomieniem
+upewnij się, że masz zainstalowane wymagane moduły Python.
+"""
 import os
 import socket
 import re

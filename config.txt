@@ -2,5 +2,5 @@ server=irc_server_address
 port=irc_server_port
 nick=bot_nick
 realname=bot_real_name
-channel=channel_to_go_after_connect 
+channel=#channel_to_go_after_connect 
 bind_ip=ipv4_or_ipv6_to_use_with_connection

@@ -50,6 +50,8 @@ def parse_arguments():
     parser.add_argument('-p', '--port', help='IRC server port number', type=str)
     parser.add_argument('-n', '--nick', help='Bot nickname', type=str)
     parser.add_argument('-c', '--channel', help='Channel to join after connect (use double quotes around channel name, e.g., "#channel")', type=str)
+    parser.add_argument('-o', '--owner', help='First bot owner in format \'*!ident@host\'', type=str)
+    
     return parser.parse_args()
 
 
@@ -363,6 +365,28 @@ def save_config(config):
             config_file.write(f'{key}={value}\n')
 
 def main():
+    config = {}
+    args = parse_arguments()
+
+    if any(vars(args).values()):
+        if args.bind_ip:
+            config['bind_ip'] = args.bind_ip
+        if args.server:
+            config['server'] = args.server
+        if args.port:
+            config['port'] = args.port
+        if args.nick:
+            config['nick'] = args.nick
+        if args.owner:
+            with open('owner.txt', 'w') as f:
+                f.write(args.owner + '\n')
+        if args.channel and not args.channel.startswith('#'):
+            print("Invalid channel name. Use '#' before the channel name.")
+        else:
+            config['channel'] = args.channel
+
+        save_config(config)
+
     # Check if required files exist, create them if they don't
     if not os.path.isfile('config.txt'):
         create_config()
@@ -376,21 +400,6 @@ def main():
     fb_data = load_fb()
     channels = set()
 
-    args = parse_arguments()
-
-    if any(vars(args).values()):
-        if args.bind_ip:
-            config['bind_ip'] = args.bind_ip
-        if args.server:
-            config['server'] = args.server
-        if args.port:
-            config['port'] = args.port
-        if args.nick:
-            config['nick'] = args.nick
-        if args.channel and not args.channel.startswith('#'):
-            print("Invalid channel name. Use '#' before the channel name.")
-            return
-        save_config(config)
 
     irc = create_socket(config)
     irc.send(('NICK ' + config['nick'] + '\r\n').encode())
@@ -398,7 +407,7 @@ def main():
     irc.send(('JOIN ' + config['channel'] + '\r\n').encode())
 
     while True:
-        message = irc.recv(2048).decode()
+        message = irc.recv(2048).decode(errors='ignore')
         print(message)
 
         if "Closing Link" in message:
@@ -410,10 +419,23 @@ def main():
             irc.send(('PONG ' + message.split()[1] + '\r\n').encode())
 
         elif 'JOIN' in message:
-            sender = message.split('!')[0][1:] + '!' + message.split('!')[1].split()[0]
-            channel = message.split('JOIN ')[1].strip()
-            process_fb(sender, channel, fb_data, irc)
+            message_lines = message.split('\n')
+            join_line = None
 
+            for line in message_lines:
+                if 'JOIN' in line:
+                    message = line
+                    break
+
+            if message:
+                print(message)
+                sender = message.split('!')[0][1:] + '!' + message.split('!')[1].split()[0]
+                channel = message.split('JOIN ')[1].strip()
+                process_fb(sender, channel, fb_data, irc)
+            else:
+                print("Nie znaleziono linii z ciągiem 'JOIN'.")
+
+  
         elif re.search(r'PRIVMSG', message):
             sender = message.split('!')[0][1:] + '!' + message.split('!')[1].split()[0]
             command = message.split('PRIVMSG')[1].strip().split(' :')[1]

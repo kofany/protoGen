@@ -1,49 +1,57 @@
 """
-INFO ENG
+Program Name: protoGen IRC Bot
+Version: 0.5
 Author: Jerzy 'kofany' Dabrowski
-Bot Name: protoGen
-Version: 0.2
-License: GPL 3.0
+Email: j@dabrowski.biz
+Project on GitHub: https://github.com/kofany/protoGen
 
-protoGen is an IRC bot designed to perform various administrative tasks,
-such as managing owners, applying flags to users, and more. It is built
-using Python and is distributed under the GPL 3.0 License. The bot can
-be easily configured through the use of a configuration wizard, which
-helps users set up the bot with the required parameters, such as server
-address, port number, bot nickname, and channel.
+Description:
+The protoGen IRC bot runs from the command line. 
+Required parameters are the: 
+
+- IP address to connect, 
+- IRC server address, 
+- IRC server port, 
+- bot name 
+- channel on which the bot should appear after connecting.
+
+Instructions:
+To run the bot, enter the following command in the command line: python3 protoGen.py -b IP_to_connect_to_IRC_network -s IRC_server_address -p IRC_server_port -n bot_name -c "#channel_to_join_after_connection"
+
+Parameters:
+-b: IP address to connect to the IRC network
+-s: IRC server address
+-p: IRC server port
+-n: bot name
+-c: channel on which the bot should appear after connecting
+
+If no arguments were provided in the command line and the configuration files do not exist yet
 
 Upon startup, protoGen checks for the existence of required files,
 such as config.txt, owner.txt, and fb.txt. If these files do not exist,
 the bot will create them and load their contents. The bot can also
 dynamically update the list of owners and handle owner commands, ensuring
 that the bot is always up-to-date with the latest information.
-
 Please refer to the README.md file for a detailed list of the txt files
 used by the bot, as well as the variables that are passed to the config.txt
 file and their descriptions.
 
-INFO PL
-Autor: Jerzy 'kofany' Dabrowski
-Nazwa bota: protoGen
-Wersja: 0.2
-Licencja: GPL 3.0
-
-protoGen to prosty bot IRC napisany w Pythonie. Głównym celem tego bota jest 
-automatyczne zarządzanie uprawnieniami użytkowników na kanałach IRC. 
-
-Wersja 0.2 zawiera funkcje, takie jak:
-- Automatyczne nadawanie uprawnień op (operatora) wybranym użytkownikom
-- Obsługa poleceń właściciela bota (dodawanie, usuwanie i wyświetlanie właścicieli)
-- Automatyczne tworzenie plików konfiguracyjnych, jeśli nie istnieją
-- Wsparcie dla poleceń związanych z banowaniem użytkowników
-
-Aby uruchomić bota, wystarczy uruchomić skrypt w środowisku Python. Przed pierwszym uruchomieniem
-upewnij się, że masz zainstalowane wymagane moduły Python.
 """
 import os
 import socket
 import re
 import time
+import argparse
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Bot configuration.')
+    parser.add_argument('-b', '--bind-ip', help='IP address to bind', type=str)
+    parser.add_argument('-s', '--server', help='IRC server address', type=str)
+    parser.add_argument('-p', '--port', help='IRC server port number', type=str)
+    parser.add_argument('-n', '--nick', help='Bot nickname', type=str)
+    parser.add_argument('-c', '--channel', help='Channel to join after connect (use double quotes around channel name, e.g., "#channel")', type=str)
+    return parser.parse_args()
+
 
 class ConfigWizard:
     def __init__(self):
@@ -316,6 +324,7 @@ def jump_server(config, irc, channels, new_server_address):
         irc.send(('JOIN ' + channel + '\r\n').encode())
 
     return irc
+
 def get_address_family(ip):
     try:
         socket.inet_pton(socket.AF_INET, ip)
@@ -328,16 +337,30 @@ def get_address_family(ip):
             return None
 
 def create_socket(config):
-    if 'bind_ip' in config:
-        address_family = get_address_family(config['bind_ip'])
-        if address_family is not None:
-            irc = socket.socket(address_family, socket.SOCK_STREAM)
-            irc.bind((config['bind_ip'], 0))
+    try:
+        if 'bind_ip' in config:
+            address_family = get_address_family(config['bind_ip'])
+            if address_family is not None:
+                irc = socket.socket(address_family, socket.SOCK_STREAM)
+                irc.bind((config['bind_ip'], 0))
+            else:
+                raise ValueError("Invalid IP address in configuration.")
         else:
-            raise ValueError("Invalid IP address in configuration.")
-    else:
-        irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            irc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        irc.connect((config['server'], int(config['port'])))
+    except OSError as e:
+        if e.errno == 49:
+            print(f"Cannot assign requested address {config.get('bind_ip', '0.0.0.0')}. Please use a valid IP address or 0.0.0.0 for localhost.")
+        else:
+            print(f"An error occurred: {e}")
+        exit(1)
     return irc
+
+
+def save_config(config):
+    with open('config.txt', 'w') as config_file:
+        for key, value in config.items():
+            config_file.write(f'{key}={value}\n')
 
 def main():
     # Check if required files exist, create them if they don't
@@ -353,13 +376,26 @@ def main():
     fb_data = load_fb()
     channels = set()
 
+    args = parse_arguments()
+
+    if any(vars(args).values()):
+        if args.bind_ip:
+            config['bind_ip'] = args.bind_ip
+        if args.server:
+            config['server'] = args.server
+        if args.port:
+            config['port'] = args.port
+        if args.nick:
+            config['nick'] = args.nick
+        if args.channel and not args.channel.startswith('#'):
+            print("Invalid channel name. Use '#' before the channel name.")
+            return
+        save_config(config)
+
     irc = create_socket(config)
-    irc.connect((config['server'], int(config['port'])))
     irc.send(('NICK ' + config['nick'] + '\r\n').encode())
     irc.send(('USER ' + config['nick'] + ' 0 * :' + config['nick'] + '\r\n').encode())
     irc.send(('JOIN ' + config['channel'] + '\r\n').encode())
-
-
 
     while True:
         message = irc.recv(2048).decode()

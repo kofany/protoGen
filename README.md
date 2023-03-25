@@ -59,14 +59,8 @@ python3 protoGen.py -b 0.0.0.0 -s irc.belwue.de -p 6667 -n protoGen -c "#protoGe
 - **.part #kanał**: Opuszcza podany kanał.
 - **.lc**: Wyświetla listę kanałów, na których bot jest obecny.
 - **.jump adres_serwera**: Przeskakuje na inny serwer IRC z podanym adresem.
-
-## README - English
-
-
-- Pamiętaj, aby nazwę kanału przekazywać w formie `-c "#kanał"`, a nie `-c #kanał`.
-- Aby wyświetlić pomoc, wpisz `python3 protoGen.py -h`.
-
 ---
+## README - English
 
 ### Running protoGen Irc Bot from the command line:
 

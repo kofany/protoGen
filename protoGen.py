@@ -443,7 +443,9 @@ def main():
             if is_owner(sender, owners):
                 if command.startswith('.op '):
                     nick_to_op = command.split(' ')[1]
-                    irc.send(('MODE ' + config['channel'] + ' +o ' + nick_to_op + '\r\n').encode())
+                    channel = message.split()[2]
+
+                    irc.send(('MODE ' + channel + ' +o ' + nick_to_op + '\r\n').encode())
 
                 if command.startswith('.+own ') or command.startswith('.-own ') or command == '.own':
                     response = handle_owner_command(command, sender, owners)
@@ -550,7 +552,9 @@ def main():
 
                 elif command.startswith('.deop '):
                     nick_to_deop = command.split(' ')[1]
-                    irc.send(('MODE ' + config['channel'] + ' -o ' + nick_to_deop + '\r\n').encode())
+                    channel = message.split()[2]
+
+                    irc.send(('MODE ' + channel + ' -o ' + nick_to_deop + '\r\n').encode())
 
                 elif command.startswith('.+fb '):
                     command_split = command.split()
@@ -614,6 +618,8 @@ def main():
                 elif command.startswith('.jump '):
                     new_server_address = command.split(' ')[1]
                     irc = jump_server(config, irc, channels, new_server_address)
+
+
 
 # Add additional commands here
 if __name__ == '__main__':
